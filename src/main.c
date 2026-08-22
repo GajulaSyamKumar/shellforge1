@@ -8,6 +8,8 @@
 #include "token.h"
 #include "lexer.h"
 #include "history.h"
+#include "parser.h"
+#include "expand.h"
 
 static void print_banner(void)
 {
@@ -19,8 +21,10 @@ static void print_banner(void)
 
 int main(void)
 {
-    char *input;
+    char *line;
+
     token_list_t tokens;
+    pipeline_t pipeline;
 
     history_init();
 
@@ -28,82 +32,95 @@ int main(void)
 
     while (1)
     {
-        /*
-         * readline() automatically supports:
-         * UP arrow    -> previous command
-         * DOWN arrow  -> next command
-         * LEFT/RIGHT  -> move cursor
-         * BACKSPACE   -> delete
-         */
-        input = readline("shellforge$ ");
+        line = readline("shellforge$ ");
 
         /*
-         * Ctrl+D / EOF
+         * Ctrl+D
          */
-        if (input == NULL)
+        if (line == NULL)
         {
-            printf("\nExiting...\n");
+            printf("\nGoodbye!\n");
             break;
         }
 
         /*
-         * Ignore empty input.
+         * Empty line
          */
-        if (strlen(input) == 0)
+        if (strlen(line) == 0)
         {
-            free(input);
+            free(line);
             continue;
         }
 
         /*
-         * exit command
+         * Add to readline history.
+         * This enables UP arrow.
          */
-        if (strcmp(input, "exit") == 0)
+        add_history(line);
+
+        /*
+         * Add to our history.
+         */
+        history_add(line);
+
+        /*
+         * Exit
+         */
+        if (strcmp(line, "exit") == 0)
         {
-            free(input);
+            free(line);
             printf("Exiting...\n");
             break;
         }
 
         /*
-         * Add command to GNU Readline history.
-         * This is what makes UP arrow work.
+         * history
          */
-        add_history(input);
-
-        /*
-         * Add command to our Shellforge history.
-         */
-        history_add(input);
-
-        /*
-         * history command:
-         * Print complete history.
-         */
-        if (strcmp(input, "history") == 0)
+        if (strcmp(line, "history") == 0)
         {
             history_print();
 
-            free(input);
+            free(line);
             continue;
         }
 
         /*
-         * Tokenize command.
+         * LEXER
          */
-        lexer(input, &tokens);
+        lexer(line, &tokens);
 
         /*
-         * Display tokens.
+         * Print tokens
          */
         token_print(&tokens);
 
-        free(input);
+        /*
+         * PARSER
+         */
+        if (!parse(&tokens, &pipeline))
+        {
+            free(line);
+            continue;
+        }
+
+        /*
+         * EXPAND VARIABLES
+         */
+        expand_variables(&pipeline);
+
+        /*
+         * Print pipeline
+         */
+        pipeline_print(&pipeline);
+
+        /*
+         * Free pipeline memory
+         */
+        pipeline_free(&pipeline);
+
+        free(line);
     }
 
-    /*
-     * Free GNU Readline history.
-     */
     clear_history();
 
     return 0;
