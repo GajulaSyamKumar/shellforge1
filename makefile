@@ -1,10 +1,12 @@
 CC = gcc
 
-CFLAGS = -Wall -Wextra -std=c11 -iquote include
+CFLAGS = -Wall -Wextra -std=c11 -Iinclude
 
 TARGET = shellforge
 
-SRC = src/expand.c \
+SRC = src/builtin.c \
+      src/executor.c \
+      src/expand.c \
       src/history.c \
       src/lexer.c \
       src/main.c \
